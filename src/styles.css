@@ -1,0 +1,18 @@
+@import '@diligentcorp/atlas-react-bundle/styles';
+@import '@diligentcorp/atlas-react-bundle/global-nav.css';
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+li,
+td,
+th,
+label,
+figcaption,
+blockquote {
+  max-width: 60ch;
+}
