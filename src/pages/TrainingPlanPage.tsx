@@ -10,6 +10,8 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  Drawer,
+  IconButton,
   LinearProgress,
   Paper,
   Radio,
@@ -369,54 +371,79 @@ function ModuleCard({ topic, inPlan, onClick, onRemove }: { topic: TrainingTopic
   );
 }
 
-// ─── Module Detail Modal ──────────────────────────────────────────────────────
+// ─── Module Detail Panel ──────────────────────────────────────────────────────
 
-function ModuleDetailModal({ topic, onClose }: { topic: TrainingTopic; onClose: () => void }) {
+function ModuleDetailPanel({ topic, onClose }: { topic: TrainingTopic | null; onClose: () => void }) {
   return (
-    <Dialog open onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ pb: 1 }}>
-        <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={2}>
-          <Box>
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>{topic.title}</Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 0.25 }}>
-              {topic.duration} min · {topic.modality}
-            </Typography>
-          </Box>
-          <Box
-            component="button"
-            onClick={onClose}
-            aria-label="Close"
-            sx={{
-              border: 'none', bgcolor: 'transparent', cursor: 'pointer',
-              color: 'text.secondary', fontSize: '1.4rem', lineHeight: 1, p: 0, flexShrink: 0, mt: 0.25,
-              '&:hover': { color: 'text.primary' },
-            }}
-          >
-            ×
-          </Box>
-        </Stack>
-      </DialogTitle>
-      <DialogContent dividers>
-        <Stack gap={2.5}>
-          <Box>
-            <Typography variant="labelSm" color="text.secondary" gutterBottom>Description</Typography>
-            <Typography variant="body1">{topic.description}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="labelSm" color="text.secondary" gutterBottom>Primary Risk Areas</Typography>
-            <Typography variant="body1">{topic.primaryRisks.join(' · ')}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="labelSm" color="text.secondary" gutterBottom>Jurisdictions</Typography>
-            <Typography variant="body1">{topic.jurisdictions.join(' · ')}</Typography>
-          </Box>
-          <Box>
-            <Typography variant="labelSm" color="text.secondary" gutterBottom>Tags</Typography>
-            <Typography variant="body1">{topic.tags.join(' · ')}</Typography>
-          </Box>
-        </Stack>
-      </DialogContent>
-    </Dialog>
+    <Drawer
+      anchor="right"
+      open={!!topic}
+      onClose={onClose}
+      slotProps={{
+        backdrop: { invisible: true },
+        paper: {
+          sx: {
+            width: 400,
+            p: 3,
+            boxShadow: '-4px 0 24px rgba(0,0,0,0.10)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 3,
+          },
+        },
+      }}
+    >
+      {topic && (
+        <>
+          {/* Header */}
+          <Stack direction="row" alignItems="flex-start" justifyContent="space-between" gap={1}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.3 }}>{topic.title}</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.875rem' }}>
+                {topic.duration} min · {topic.modality}
+              </Typography>
+            </Box>
+            <IconButton size="small" onClick={onClose} aria-label="Close" sx={{ mt: -0.5, mr: -1 }}>
+              ×
+            </IconButton>
+          </Stack>
+
+          <Divider />
+
+          {/* Content */}
+          <Stack gap={2.5}>
+            <Box>
+              <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Description</Typography>
+              <Typography variant="body1" sx={{ fontSize: '0.875rem', lineHeight: 1.7 }}>{topic.description}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Primary Risk Areas</Typography>
+              <Stack direction="row" gap={0.75} flexWrap="wrap">
+                {topic.primaryRisks.map((r) => (
+                  <Chip key={r} label={r} size="small" sx={{ fontSize: '0.72rem' }} />
+                ))}
+              </Stack>
+            </Box>
+            <Box>
+              <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Jurisdictions</Typography>
+              <Stack direction="row" gap={0.75} flexWrap="wrap">
+                {topic.jurisdictions.map((j) => (
+                  <Chip key={j} label={j} size="small" variant="outlined" sx={{ fontSize: '0.72rem' }} />
+                ))}
+              </Stack>
+            </Box>
+            <Box>
+              <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Tags</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{topic.tags.join(' · ')}</Typography>
+            </Box>
+            <Box>
+              <Typography variant="overline" color="text.secondary" display="block" sx={{ mb: 0.5 }}>Last Updated</Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ fontSize: '0.875rem' }}>{topic.lastUpdated}</Typography>
+            </Box>
+          </Stack>
+        </>
+      )}
+    </Drawer>
   );
 }
 
@@ -844,6 +871,7 @@ function CanvasPanel({ scope, selectedGroups }: { scope: 'global' | 'groups'; se
   const [activeTab, setActiveTab] = useState(0);
   const [selectedModule, setSelectedModule] = useState<TrainingTopic | null>(null);
   const [removedIds, setRemovedIds] = useState<Set<number>>(new Set());
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null);
 
   const tabs: { key: BUKey | 'all'; label: string }[] =
     scope === 'global'
@@ -868,8 +896,13 @@ function CanvasPanel({ scope, selectedGroups }: { scope: 'global' | 'groups'; se
   const inPlanTopics = groupTopics.filter((g) => g.inPlan);
   const groupDuration = inPlanTopics.reduce((s, g) => s + g.topic.duration, 0);
 
-  function handleRemove(id: number) {
-    setRemovedIds((prev) => new Set([...prev, id]));
+  const confirmTopic = confirmRemoveId !== null ? TOPICS.find((t) => t.id === confirmRemoveId) : null;
+
+  function handleConfirmRemove() {
+    if (confirmRemoveId !== null) {
+      setRemovedIds((prev) => new Set([...prev, confirmRemoveId]));
+      setConfirmRemoveId(null);
+    }
   }
 
   return (
@@ -910,13 +943,28 @@ function CanvasPanel({ scope, selectedGroups }: { scope: 'global' | 'groups'; se
               topic={topic}
               inPlan={inPlan}
               onClick={() => inPlan && setSelectedModule(topic)}
-              onRemove={() => handleRemove(topic.id)}
+              onRemove={() => setConfirmRemoveId(topic.id)}
             />
           ))}
         </Box>
       </Box>
 
-      {selectedModule && <ModuleDetailModal topic={selectedModule} onClose={() => setSelectedModule(null)} />}
+      {/* Detail panel */}
+      <ModuleDetailPanel topic={selectedModule} onClose={() => setSelectedModule(null)} />
+
+      {/* Remove confirmation dialog */}
+      <Dialog open={confirmRemoveId !== null} onClose={() => setConfirmRemoveId(null)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700 }}>Remove module?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">
+            Remove <strong>{confirmTopic?.title}</strong> from your training plan? You can add it back later.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="outlined" onClick={() => setConfirmRemoveId(null)}>Cancel</Button>
+          <Button variant="contained" onClick={handleConfirmRemove} sx={{ '&&': { bgcolor: '#d32f2f' } }}>Remove</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
