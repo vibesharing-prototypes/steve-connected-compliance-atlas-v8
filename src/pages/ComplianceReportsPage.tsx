@@ -13,7 +13,8 @@ import {
   StatusIndicator,
   useAIChatContext,
 } from '@diligentcorp/atlas-react-bundle';
-import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Container, Divider, Link as MuiLink, List, ListItem, ListItemText, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography } from '@mui/material';
+import { Accordion, AccordionDetails, AccordionSummary, Box, Button, Chip, Container, Divider, InputAdornment, Link as MuiLink, List, ListItem, ListItemText, MenuItem, Select, Stack, TextField, Typography } from '@mui/material';
+import SearchIcon from '@diligentcorp/atlas-react-bundle/icons/Search';
 import ArrowDownIcon from '@diligentcorp/atlas-react-bundle/icons/ArrowDown';
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router';
@@ -209,6 +210,8 @@ export default function ComplianceReportsPage() {
   const navigate = useNavigate();
   const [dismissedSignals, setDismissedSignals] = useState<Set<string>>(new Set());
   const [aiModalSignal, setAiModalSignal] = useState<typeof SIGNALS[number] | null>(null);
+  const [reportSearch, setReportSearch] = useState('');
+  const [reportStatusFilter, setReportStatusFilter] = useState('all');
 
   const activeSignals = SIGNALS.filter((s) => !dismissedSignals.has(s.title));
 
@@ -413,60 +416,101 @@ export default function ComplianceReportsPage() {
           <Typography variant="h2" sx={{ mb: 2 }}>
             Recent reports
           </Typography>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 600, '& .MuiTableCell-root': { borderColor: 'divider', py: '10px', px: '12px' } }}>
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'grey.100' }}>
-                  {['Report', 'Generated', 'Status', 'Type', 'Actions'].map((h) => (
-                    <TableCell key={h} sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      {h}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {RECENT_REPORTS.map(({ title, date, status, statusColor, type, to }) => (
-                  <TableRow key={title} hover={false} sx={{ opacity: to ? 1 : 0.5 }}>
-                    <TableCell>
-                      {to ? (
-                        <MuiLink component="button" underline="hover" onClick={() => navigate(to)} sx={{ textAlign: 'left' }}>
-                          <Typography variant="labelSm" sx={{ fontWeight: 600 }}>{title}</Typography>
-                        </MuiLink>
-                      ) : (
+
+          {/* Search + filter */}
+          <Stack direction="row" gap={1.5} sx={{ mb: 2 }}>
+            <TextField
+              size="small"
+              placeholder="Search"
+              value={reportSearch}
+              onChange={(e) => setReportSearch(e.target.value)}
+              sx={{ flex: 1 }}
+              slotProps={{
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon style={{ width: 16, height: 16 }} />
+                    </InputAdornment>
+                  ),
+                },
+              }}
+            />
+            <Select
+              size="small"
+              value={reportStatusFilter}
+              onChange={(e) => setReportStatusFilter(e.target.value)}
+              sx={{ minWidth: 140 }}
+            >
+              <MenuItem value="all">All Status</MenuItem>
+              <MenuItem value="deteriorating">Deteriorating</MenuItem>
+              <MenuItem value="stable">Stable</MenuItem>
+            </Select>
+          </Stack>
+
+          {/* Activity rows */}
+          <Box sx={({ palette }) => ({ border: '1px solid', borderColor: palette.divider, borderRadius: 1, overflow: 'hidden' })}>
+            {RECENT_REPORTS.filter(({ title, status }) => {
+              const matchesSearch = title.toLowerCase().includes(reportSearch.toLowerCase());
+              const matchesStatus = reportStatusFilter === 'all' || status.toLowerCase() === reportStatusFilter;
+              return matchesSearch && matchesStatus;
+            }).map(({ title, date, status, statusColor, type, to }, i, arr) => (
+              <Box key={title}>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  gap={2}
+                  sx={{ px: 2, py: 1.5, opacity: to ? 1 : 0.5 }}
+                >
+                  {/* Title */}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    {to ? (
+                      <MuiLink component="button" underline="hover" onClick={() => navigate(to)} sx={{ textAlign: 'left' }}>
                         <Typography variant="labelSm" sx={{ fontWeight: 600 }}>{title}</Typography>
-                      )}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Typography variant="textSm" color="text.secondary">
-                        {date}
-                      </Typography>
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <StatusIndicator label={status} color={statusColor} />
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Chip
-                        label={type}
-                        size="small"
-                        variant={type === 'Configured' ? 'filled' : 'outlined'}
-                        sx={type === 'Configured' ? { bgcolor: 'primary.50', color: 'primary.main', borderColor: 'primary.200', fontWeight: 500 } : {}}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Stack direction="row" gap={0.5}>
-                        <Button size="small" variant="text" disabled={!to} onClick={() => to && navigate(to)}>
-                          Edit
-                        </Button>
-                        <Button size="small" variant="text" disabled={!to} onClick={() => to && navigate(`${to}/share`)}>
-                          Share
-                        </Button>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </MuiLink>
+                    ) : (
+                      <Typography variant="labelSm" sx={{ fontWeight: 600 }}>{title}</Typography>
+                    )}
+                  </Box>
+                  {/* Type chip */}
+                  <Chip
+                    label={type}
+                    size="small"
+                    variant={type === 'Configured' ? 'filled' : 'outlined'}
+                    sx={type === 'Configured' ? { bgcolor: 'primary.50', color: 'primary.main', borderColor: 'primary.200', fontWeight: 500 } : {}}
+                  />
+                  {/* Date */}
+                  <Typography variant="textSm" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                    {date}
+                  </Typography>
+                  {/* Status dot + label */}
+                  <Stack direction="row" alignItems="center" gap={0.75} sx={{ whiteSpace: 'nowrap' }}>
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: statusColor === 'success' ? 'success.main' : statusColor === 'error' ? 'error.main' : 'warning.main',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <Typography variant="textSm">{status}</Typography>
+                  </Stack>
+                  {/* View button */}
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    disabled={!to}
+                    onClick={() => to && navigate(to)}
+                    sx={{ whiteSpace: 'nowrap' }}
+                  >
+                    View
+                  </Button>
+                </Stack>
+                {i < arr.length - 1 && <Divider />}
+              </Box>
+            ))}
           </Box>
+
           <Stack direction="row" justifyContent="flex-end" sx={{ mt: 1.5 }}>
             <MuiLink component={NavLink} to="/reports" underline="hover" variant="body1">
               View all reports

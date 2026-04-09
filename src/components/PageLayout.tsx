@@ -1,10 +1,16 @@
-import { Container, Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { PropsWithChildren } from "react";
 
-export default function PageLayout({ children }: PropsWithChildren) {
+interface PageLayoutProps {
+  fullWidth?: boolean;
+}
+
+export default function PageLayout({ children, fullWidth }: PropsWithChildren<PageLayoutProps>) {
   return (
-    <Container sx={{ py: 2 }}>
-      <Stack gap={3}>{children}</Stack>
-    </Container>
+    <Box sx={{ px: 3, py: 2, width: '100%' }}>
+      <Box sx={fullWidth ? {} : { maxWidth: 800, mx: 'auto', width: '100%' }}>
+        <Stack gap={3}>{children}</Stack>
+      </Box>
+    </Box>
   );
 }

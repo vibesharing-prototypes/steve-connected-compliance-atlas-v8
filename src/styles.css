@@ -1,5 +1,18 @@
 @import '@diligentcorp/atlas-react-bundle/styles';
-@import '@diligentcorp/atlas-react-bundle/global-nav.css';
+
+/* Zero out the nav sidebar reserved space — nav moved to hamburger drawer */
+:root,
+:host {
+  --atlas-side-nav-width: 0px !important;
+  --atlas-side-nav-collapse-width: 0px !important;
+  --atlas-nav-width: 0px !important;
+  --atlas-nav-collapse-width: 0px !important;
+}
+
+mock-hb-global-navigator,
+[slot="navigation"] {
+  display: none !important;
+}
 
 h1,
 h2,
